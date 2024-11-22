@@ -7,7 +7,6 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import UserDashboard from './pages/user/UserDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import SiteSettings from './components/admin/SiteSettings'
 
 const App = () => {
   return (
@@ -24,7 +23,6 @@ const App = () => {
           <Route path='/forgot-password' element = {<ForgotPassword/>} />
           <Route path='/reset-password' element = {<ResetPassword userEmail="abc"/>} />
           <Route path='/admin/' element={<AdminDashboard/>} />
-          <Route path='/admin/site-settings' element={<SiteSettings/>} />
         </Routes>
       </Router>
     </div>
