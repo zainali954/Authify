@@ -72,8 +72,7 @@ export const register = asyncHandler(async (req, res, next) => {
         verificationCode: undefined,
         verificationCodeExpiry: undefined
     }
-    console.log(userData)
-    apiResponse.success(res, "Registration successful! We've sent a 6-digit verification code to your email. Please verify to activate your account.", { userData, accessToken }, 201)
+    apiResponse.success(res, "Registration successful! We've sent a 6-digit verification code to your email. Please verify to activate your account.", { userData }, 201)
 })
 
 export const login = asyncHandler(async (req, res, next) => {
@@ -129,9 +128,8 @@ export const login = asyncHandler(async (req, res, next) => {
         password: undefined,
         refreshToken: undefined
     }
-    console.log(userData)
     // send response
-    apiResponse.success(res, "User logged in successfully", { userData, accessToken }, 200)
+    apiResponse.success(res, "User logged in successfully", { userData }, 200)
 })
 
 export const logout = asyncHandler(async (req, res, next) => {
@@ -148,7 +146,6 @@ export const logout = asyncHandler(async (req, res, next) => {
 
 export const refreshToken = asyncHandler(async (req, res, next) => {
     const IncommingRefreshToken = req.cookies?.refreshToken 
-    console.log(IncommingRefreshToken)
 
     if (!IncommingRefreshToken) {
         throw new apiError(401, "Refresh token missing. Please log in again.");
@@ -158,7 +155,6 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
     try {
         decoded = jwt.verify(IncommingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
     } catch (err) {
-        console.log(err.message)
         throw new apiError(403, err.message);
     }
 
@@ -298,8 +294,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
-    console.log(req.body)
-    console.log(token)
 
     // Validate input fields
     validateFields([
@@ -315,7 +309,6 @@ export const resetPassword = asyncHandler(async (req, res) => {
     let decoded;
     try {
         decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-        console.log(decoded)
     } catch (error) {
         console.error(error)
     }

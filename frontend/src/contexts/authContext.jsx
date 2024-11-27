@@ -84,7 +84,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(true)
     try {
       const response = await api.post(`/auth/resend-verification-email`)
-      console.log(response)
       if(response.data){
         return { success: true, message:response.data.message || "Email send successfuly"}
       }
@@ -160,7 +159,6 @@ export const AuthProvider = ({ children }) => {
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log(parsedUser)
           setUser(parsedUser);
           setIsAuthenticated(true);
           setIsAdmin(parsedUser.role === "admin");
