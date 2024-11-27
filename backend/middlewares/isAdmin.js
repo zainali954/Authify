@@ -9,9 +9,9 @@ const isAdmin = asyncHandler(async (req, _, next) => {
     if (!user) {
         throw new apiError(404, "User not found. Please log in again.");
     }
-
+    console.log(user)
     // Check if the user is an admin
-    if (user.isAdmin) {
+    if (user.role === "admin") {
         next(); // Allow the request to proceed
     } else {
         throw new apiError(403, "Forbidden: You do not have admin privileges.");

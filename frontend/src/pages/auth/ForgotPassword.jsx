@@ -1,12 +1,24 @@
 import React, { useState } from 'react'
 import Input from '../../components/shared/Input'
+import useAuth from '../../contexts/authContext'
+import toast from 'react-hot-toast'
+import useLoading from '../../contexts/loadingContext'
 
 const ForgotPassword = () => {
+  const { loading } = useLoading()
+  const { ForgotPassword } = useAuth()
   const [email, setEmail] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log(email)
+   if(!loading){
+    const { success, message } = await ForgotPassword(email)
+    if(success){
+      toast.success(message)
+    }else{
+      toast.error(message)
+    }
+   }
   }
 
   return (

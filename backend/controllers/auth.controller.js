@@ -9,11 +9,12 @@ import asyncHandler from "../utils/asyncHandler.js";
 import generateJWT from "../utils/generateJWT.js";
 import validateFields from "../utils/validateFields.js";
 import { sendVerifyEmail, sendVerifiedSuccessfully, sendResetPassword, sendResetPasswordSuccessful } from "../utils/sendEmails.js";
+import formatDateShort from "../utils/convertDates.js";
 
 export const register = asyncHandler(async (req, res, next) => {
     const { name, email, password } = req.body;
 
-    const data = [ 
+    const data = [
         {
             value: req.body.email,
             type: "email",
@@ -39,8 +40,9 @@ export const register = asyncHandler(async (req, res, next) => {
         name,
         email,
         password,
-        verificationCode : hashedVerificationCode,
-        verificationCodeExpiry : Date.now() + 15 * 60 * 1000 // 15 minutes
+        lastLogin: Date.now(),
+        verificationCode: hashedVerificationCode,
+        verificationCodeExpiry: Date.now() + 15 * 60 * 1000 // 15 minutes
     })
 
     const { accessToken, refreshToken } = await generateJWT(newUser)
@@ -60,15 +62,24 @@ export const register = asyncHandler(async (req, res, next) => {
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
     // send verification email
-    sendVerifyEmail(newUser.email, verificationCode)
-
-    apiResponse.success(res, "User registered successfully", { name, email }, 201)
+    await sendVerifyEmail(newUser.email, verificationCode)
+    const userData = {
+        ...newUser._doc,
+        createdAt: formatDateShort(newUser.createdAt),
+        lastLogin: formatDateShort(newUser.lastLogin),
+        password: undefined,
+        refreshToken: undefined,
+        verificationCode: undefined,
+        verificationCodeExpiry: undefined
+    }
+    console.log(userData)
+    apiResponse.success(res, "Registration successful! We've sent a 6-digit verification code to your email. Please verify to activate your account.", { userData, accessToken }, 201)
 })
 
 export const login = asyncHandler(async (req, res, next) => {
     // get user details from request body
     const { email, password } = req.body;
-    const data = [ 
+    const data = [
         {
             value: req.body.email,
             type: "email",
@@ -79,17 +90,17 @@ export const login = asyncHandler(async (req, res, next) => {
         }
     ]
     validateFields(data)
-    
+
     // find user in database
     const user = await User.findOne({ email })
 
     if (!user) {
-        throw new apiError(404, "User not found")
+        throw new apiError(404, "Invalid email or password. Please check your credentials and try again.")
     }
     // check if password is correct
     const isCorrect = await user.isPasswordCorrect(password)
     if (!isCorrect) {
-        throw new apiError(401, "Invalid credentials")
+        throw new apiError(401, "Invalid email or password. Please check your credentials and try again.")
     }
     // generate access and refresh tokens
     const { accessToken, refreshToken } = await generateJWT(user)
@@ -108,14 +119,24 @@ export const login = asyncHandler(async (req, res, next) => {
         sameSite: 'Strict',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
+    user.lastLogin = Date.now();
+    await user.save()
 
+    const userData = {
+        ...user._doc,
+        createdAt: formatDateShort(user.createdAt),
+        lastLogin: formatDateShort(user.lastLogin),
+        password: undefined,
+        refreshToken: undefined
+    }
+    console.log(userData)
     // send response
-    apiResponse.success(res, "User logged in successfully", { name: user.name, email: user.email }, 200)
+    apiResponse.success(res, "User logged in successfully", { userData, accessToken }, 200)
 })
 
-export const logout = asyncHandler( async(req, res, next)=>{
+export const logout = asyncHandler(async (req, res, next) => {
     const user = await User.findById(req.user.id)
-    if(!user){
+    if (!user) {
         throw new apiError(404, "User not found")
     }
     user.refreshToken = undefined;
@@ -126,7 +147,8 @@ export const logout = asyncHandler( async(req, res, next)=>{
 })
 
 export const refreshToken = asyncHandler(async (req, res, next) => {
-    const IncommingRefreshToken = req.cookies?.refreshToken || req.header("Authorization")?.replace("Bearer ", "");
+    const IncommingRefreshToken = req.cookies?.refreshToken 
+    console.log(IncommingRefreshToken)
 
     if (!IncommingRefreshToken) {
         throw new apiError(401, "Refresh token missing. Please log in again.");
@@ -136,6 +158,7 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
     try {
         decoded = jwt.verify(IncommingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
     } catch (err) {
+        console.log(err.message)
         throw new apiError(403, err.message);
     }
 
@@ -172,13 +195,13 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
     });
 
     // Send success response
-    apiResponse.success(res, "Token refreshed successfully.", {}, 200)
+    apiResponse.success(res, "Token refreshed successfully.", { accessToken }, 200)
 });
 
 export const verifyEmail = asyncHandler(async (req, res) => {
     const { email, verificationCode } = req.body;
     const data = [
-        { 
+        {
             value: verificationCode,
             type: "verificationCode",
         }
@@ -257,13 +280,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     }
 
     // Generate reset token
-    const passwordResetToken = crypto.randomBytes(32).toString("hex");
-    const hashedPasswordResetToken = await bcrypt.hash(passwordResetToken, 10);
-
-    // Save reset token and expiry to user record
-    user.passwordResetToken = hashedPasswordResetToken;
-    user.passwordResetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
-    await user.save();
+    const passwordResetToken = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' })
 
     // Send reset link via email
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${passwordResetToken}`;
@@ -280,12 +297,13 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const { email, password } = req.body;
+    const { password } = req.body;
+    console.log(req.body)
+    console.log(token)
 
     // Validate input fields
     validateFields([
-        { value: password, type: "password" },
-        { value: email, type: "email" }
+        { value: password, type: "password" }
     ]);
 
     // Ensure token is provided
@@ -293,26 +311,24 @@ export const resetPassword = asyncHandler(async (req, res) => {
         throw new apiError(400, "Reset token is missing. Please try again.");
     }
 
-    // Find user by email and validate token expiry
+    // decode the token and takeout user email
+    let decoded;
+    try {
+        decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+        console.log(decoded)
+    } catch (error) {
+        console.error(error)
+    }
+
     const user = await User.findOne({
-        email,
-        passwordResetTokenExpiry: { $gt: Date.now() }, // Check expiry
+        email: decoded.email
     });
 
     if (!user) {
         throw new apiError(400, "Invalid or expired token. Please request a new one.");
     }
 
-    // Validate the token matches the stored hashed token
-    const isMatch = await bcrypt.compare(token, user.passwordResetToken);
-    if (!isMatch) {
-        throw new apiError(403, "Invalid reset token. Please try again.");
-    }
-
-    // Update user's password and clear reset token and expiry
-    user.password = password; // Assuming hashing is handled in your User schema's pre-save middleware
-    user.passwordResetToken = undefined;
-    user.passwordResetTokenExpiry = undefined;
+    user.password = password;
     await user.save();
 
     // Notify user of successful password change
@@ -326,3 +342,22 @@ export const resetPassword = asyncHandler(async (req, res) => {
         200
     );
 });
+
+
+export const resendVerificationEmail = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id)
+    if (!user) {
+        throw new apiError(404, "User not found")
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedVerificationCode = await bcrypt.hash(verificationCode, 10);
+
+    user.verificationCode = hashedVerificationCode
+    user.verificationCodeExpiry = Date.now() + 15 * 60 * 1000 //15 minutes
+    await user.save()
+
+    await sendVerifyEmail(user.email, verificationCode)
+
+    apiResponse.success(res, "If the email exists, a code has been sent", {}, 200)
+})

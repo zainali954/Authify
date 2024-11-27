@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import Input from '../../components/shared/Input';
+import toast from 'react-hot-toast'
+import useAuth from '../../contexts/authContext';
+import { useNavigate } from 'react-router-dom';
+import useLoading from '../../contexts/loadingContext';
 
 const RegisterPage = () => {
+  const navigate = useNavigate()
+  const { loading } = useLoading()
+  const { Register} = useAuth()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-
-  const handleSubmit= (e) => {
+  const handleSubmit= async (e) => {
     e.preventDefault()
-    console.log({
-      name,
-      email,
-      password
-    })
+    if(!loading){
+      const { success, message } = await Register(name, email, password)
+      if(success){
+        toast.success(message)
+        navigate('/verify-email')
+      }else{
+        toast.error(message)
+      }
+    }
   }
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -42,6 +52,7 @@ const RegisterPage = () => {
           <button
             type="submit"
             className="w-full py-3 bg-green-500 text-white font-medium rounded-lg shadow-md hover:bg-green-600 transition duration-200"
+            disabled={loading}
           >
             Register Now
           </button>

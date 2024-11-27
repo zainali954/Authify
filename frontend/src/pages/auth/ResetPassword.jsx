@@ -1,32 +1,38 @@
 import React, { useState } from 'react';
-import Input from '../../components/shared/Input'; // Assuming you're using the same Input component
+import Input from '../../components/shared/Input';
+import { useNavigate, useParams } from 'react-router-dom';
+import useAuth from '../../contexts/authContext';
+import toast from 'react-hot-toast';
+import useLoading from '../../contexts/loadingContext';
 
-const ResetPassword = ({ userEmail }) => {
-  const [email, setEmail] = useState(userEmail || ''); // If userEmail is provided, use it.
+const ResetPassword = () => {
+  const { loading } = useLoading()
+  const { ResetPassword} = useAuth()
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const {token} = useParams();
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // If the email is provided by backend, skip the email validation
-    if (!email) {
-      setError("Email is required.");
-      return;
-    }
-
     // Check if passwords match
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
 
-    // Simulate API call or password reset logic here
-    console.log("Password reset successfully for:", email);
+    if(!loading){
+      const { success, message } = await ResetPassword(token, newPassword);
+      if(success){
+        toast.success(message)
+        navigate('/login')
+      }else{
+        toast.error(message)
+      }
+    }
 
     // Reset fields after submission
-    setEmail('');
     setNewPassword('');
     setConfirmPassword('');
     setError('');
@@ -36,23 +42,11 @@ const ResetPassword = ({ userEmail }) => {
     <div className="min-h-screen flex items-center justify-center text-slate-100">
       <div className="w-full max-w-md border border-gray-200 dark:border-zinc-700 bg-zinc-800 shadow-lg rounded-xl p-6">
         <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-gray-200">Reset Password</h2>
-        <p className="text-center text-slate-400 mt-2">
-          {userEmail ? "Enter your new password below." : "Enter your email and new password."}
-        </p>
+        <p className="text-center text-slate-400 mt-2">Enter your new password below.</p>
 
         {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          {/* Email field only if the userEmail is not provided */}
-          {!userEmail && (
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          )}
-
           <Input
             type="password"
             placeholder="New Password"
@@ -65,6 +59,9 @@ const ResetPassword = ({ userEmail }) => {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
+          <p className=" text-gray-600 mt-4">
+            <a href="/forgot-password" className="text-green-500 hover:underline">Request new link ?</a>
+          </p>
 
           <button
             type="submit"

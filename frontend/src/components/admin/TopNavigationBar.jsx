@@ -1,6 +1,22 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuth from '../../contexts/authContext';
+import useLoading from '../../contexts/loadingContext';
 
-const TopNavigationBar = ({ onLogout }) => {
+const TopNavigationBar = () => {
+  const { loading } = useLoading()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    if (!loading) {
+      const { success, message } = await logout()
+      if (success) {
+        toast.success(message)
+        navigate('/login')
+      } else toast.error(message)
+    }
+  };
   return (
     <nav className="bg-zinc-800 text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
@@ -15,7 +31,7 @@ const TopNavigationBar = ({ onLogout }) => {
         {/* Right Section: Logout */}
         <div>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium"
           >
             Logout

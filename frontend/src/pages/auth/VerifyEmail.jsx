@@ -1,9 +1,22 @@
 import React, { useRef, useState, useEffect } from "react";
+import useAuth from "../../contexts/authContext";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import useLoading from "../../contexts/loadingContext";
 
 const VerifyEmail = () => {
+  const navigate = useNavigate()
+  const { loading } = useLoading()
+  const { verifyEmail, resendVerificationEmail, user } = useAuth()
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef([]);
 
+  // verifed user should not enter here
+  useEffect(() => {
+    if (user?.isVerified) {
+      navigate("/user/dashboard");
+    }
+  }, [user, navigate]);
   const handleChange = (index, value) => {
     if (value.length === 1) {
       // Single character input
@@ -45,16 +58,38 @@ const VerifyEmail = () => {
       setCode(newCode);
     }
   };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Submitted Code:", code.join(""));
-    // Add submission logic here
+  const submitVerificationCode = async () => {
+    if (!loading) {
+      const verification_code = code.join("");
+      const { success, message } = await verifyEmail(verification_code);
+      if (success) {
+        toast.success(message);
+        navigate("/user/dashboard");
+      } else {
+        toast.error(message);
+      }
+    }
   };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!loading) {
+      await submitVerificationCode();
+    }
+  };
+
+  const handleResendEmail = async (e) => {
+    if (!loading) {
+      const { success, message } = await resendVerificationEmail()
+      if (success) {
+        toast.success(message)
+      } else toast.error(message)
+    }
+  }
 
   useEffect(() => {
     if (code.every((digit) => digit !== "")) {
-      console.log("All fields filled:", code.join(""));
+      submitVerificationCode()
     }
   }, [code]);
 
@@ -93,7 +128,7 @@ const VerifyEmail = () => {
 
         <p className="text-center text-gray-600 mt-4">
           Didn't receive the code?{" "}
-          <button className="text-green-500 hover:underline focus:outline-none">
+          <button className="text-green-500 hover:underline focus:outline-none" onClick={handleResendEmail}>
             Resend
           </button>
         </p>
