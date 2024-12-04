@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 
 // Base API configuration
 const api = axios.create({
-  baseURL: "http://localhost:3000/api/v1",
+  baseURL: "https://authify-kewx.onrender.com/api/v1",
   withCredentials: true, // Allow cookies to be sent with requests
 });
 

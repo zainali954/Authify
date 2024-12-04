@@ -15,7 +15,7 @@ const useGoogleAuth = () => {
             try {
                 setLoading(true);
                 const response = await axios.post(
-                    'http://localhost:3000/api/v1/auth/google-login',
+                    'https://authify-kewx.onrender.com/api/v1/auth/google-login',
                     { code: codeResponse.code }, // Authorization code
                     { withCredentials: true }    // Send cookies with request
                 );
