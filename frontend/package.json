@@ -13,6 +13,7 @@
     "@react-oauth/google": "^0.12.1",
     "@tabler/icons-react": "^3.22.0",
     "axios": "^1.7.7",
+    "fullstack-auth": "file:..",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
