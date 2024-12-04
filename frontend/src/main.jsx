@@ -5,10 +5,12 @@ import App from './App.jsx'
 import { AuthProvider } from './contexts/authContext.jsx'
 import { UserProvider } from './contexts/userContext.jsx'
 import { LoadingProvider } from './contexts/loadingContext.jsx'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
     <LoadingProvider>
       <AuthProvider>
         <UserProvider>
@@ -16,5 +18,6 @@ createRoot(document.getElementById('root')).render(
         </UserProvider>
       </AuthProvider>
     </LoadingProvider>
+    </GoogleOAuthProvider>
   </StrictMode>,
 )

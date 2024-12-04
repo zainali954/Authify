@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../contexts/authContext';
 import useLoading from '../../contexts/loadingContext';
+import toast from 'react-hot-toast';
 
 const TopNavigationBar = () => {
   const { loading } = useLoading()

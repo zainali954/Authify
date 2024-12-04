@@ -1,11 +1,12 @@
 import express from 'express';
 const router = express.Router();
 
-import { register, login, logout, verifyEmail, forgotPassword, resetPassword, refreshToken, resendVerificationEmail } from '../controllers/auth.controller.js';
+import { register, login, logout, verifyEmail, forgotPassword, resetPassword, refreshToken, resendVerificationEmail, googleLogin } from '../controllers/auth.controller.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
 
 router.post('/register', register)
 router.post('/login', login)
+router.post('/google-login', googleLogin)
 router.post('/verify-email', verifyEmail)
 
 router.post('/resend-verification-email', verifyAuth, resendVerificationEmail)

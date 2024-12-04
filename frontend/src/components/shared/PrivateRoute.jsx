@@ -9,11 +9,15 @@ const PrivateRoute = ({ children, roles = [] }) => {
   const { isAuthenticated, user } = useAuth(); // User authentication and role info
 
   // Show loading spinner or placeholder while loading
-  if (loading || user === null) {
+  if (loading) {
     return <Loader/>;
   }
   if(!isAuthenticated) {
     return <Navigate to='/login' replace />
+  }
+  // If user is undefined/null (should not happen for authenticated users)
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
   // Redirect to email verification if the user is not verified

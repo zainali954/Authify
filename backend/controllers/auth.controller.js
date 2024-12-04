@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken"
 import crypto from 'crypto'
-
+import axios from 'axios'
 import User from "../models/user.model.js";
 import apiError from "../utils/apiError.js";
 import apiResponse from "../utils/apiResponse.js";
@@ -96,6 +96,10 @@ export const login = asyncHandler(async (req, res, next) => {
     if (!user) {
         throw new apiError(404, "Invalid email or password. Please check your credentials and try again.")
     }
+    // Check if the user has a password (traditional login)
+    if (!user.password) {
+        throw new apiError(400, "This account uses Google login. Please use Google to sign in.");
+    }
     // check if password is correct
     const isCorrect = await user.isPasswordCorrect(password)
     if (!isCorrect) {
@@ -130,6 +134,84 @@ export const login = asyncHandler(async (req, res, next) => {
     }
     // send response
     apiResponse.success(res, "User logged in successfully", { userData }, 200)
+})
+
+export const googleLogin = asyncHandler(async (req, res)=>{
+    const { code } = req.body;
+
+    if(!code) {
+        throw new apiError(400, "Authorization code is required.")
+    }
+    try {
+        // Exchange authorization code for tokens
+        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: "postmessage",  // Use postmessage for SPAs
+            grant_type: 'authorization_code',
+        });
+
+        const { access_token } = tokenResponse.data;  // Get only access token
+
+        // Fetch user data from Google
+        const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: {
+                Authorization: `Bearer ${access_token}`,  // Use the access token to fetch user data
+            },
+        });
+
+        const userData = userInfoResponse.data;
+
+        // Check if user already exists in DB
+        let user = await User.findOne({ email: userData.email });
+
+        if (!user) {
+            user = new User({
+                email: userData.email,
+                googleId: userData.id,
+                name: userData.name,
+                picture: userData.picture,
+                isVerified: true, // Google users are automatically verified
+                lastLogin: new Date(), // Set the last login timestamp
+            });
+            await user.save();  // Save new user to the database
+        }else{
+            user.lastLogin = new Date();
+            await user.save(); // Save changes
+        }
+
+        // generate access and refresh tokens
+    const { accessToken, refreshToken } = await generateJWT(user)
+
+    // Send new tokens in cookies
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 30 * 60 * 1000 // 30 minutes
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+    const data = {
+        ...user._doc,
+        createdAt: formatDateShort(user.createdAt),
+        lastLogin: formatDateShort(user.lastLogin),
+        password: undefined,
+        refreshToken: undefined
+    }
+    // send response
+    apiResponse.success(res, "User logged in successfully", { data }, 200)
+
+    } catch (error) {
+        console.error("Error during Google login:", error.response || error.message || error);
+        throw new apiError(500, "Failed to log in with Google");
+    }
 })
 
 export const logout = asyncHandler(async (req, res, next) => {
